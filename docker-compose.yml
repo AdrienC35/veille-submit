@@ -7,6 +7,8 @@ services:
       - "7890:7890"
     env_file:
       - .env
+    environment:
+      PGHOST: postgres
     depends_on:
       - postgres
 
@@ -15,14 +17,14 @@ services:
     container_name: veille-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: main
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: ${PGDATABASE:-main}
+      POSTGRES_USER: ${PGUSER:-admin}
+      POSTGRES_PASSWORD: ${PGPASSWORD:-changeme}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
-    ports:
-      - "5432:5432"
+    # ports:
+    #   - "5432:5432"  # Uncomment only if you need external DB access
 
 volumes:
   pgdata:

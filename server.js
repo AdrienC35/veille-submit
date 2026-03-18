@@ -35,6 +35,17 @@ const PORT = parseInt(process.env.PORT || '7890', 10);
 const DB_SCHEMA = process.env.DB_SCHEMA || 'veille';
 const DB_TABLE = process.env.DB_TABLE || 'feed_items';
 const AGENT_ID = parseInt(process.env.AGENT_ID || '1', 10);
+const API_TOKEN = process.env.API_TOKEN || '';
+
+// Validate SQL identifiers to prevent injection via env vars
+function assertSafeId(val, name) {
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(val)) throw new Error(`Unsafe identifier in ${name}: "${val}"`);
+}
+assertSafeId(DB_SCHEMA, 'DB_SCHEMA');
+assertSafeId(DB_TABLE, 'DB_TABLE');
+
+// HTML escape for template rendering
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 // ntfy — subscription channel (receive URLs)
 const NTFY_SERVER = process.env.NTFY_SERVER || 'https://ntfy.sh';
@@ -45,9 +56,6 @@ const NTFY_AUTH_PASS = process.env.NTFY_AUTH_PASS || '';
 // ntfy — notification channel (send confirmations)
 const NTFY_NOTIFY_TOPIC = process.env.NTFY_NOTIFY_TOPIC || '';
 const NTFY_NOTIFY_SERVER = process.env.NTFY_NOTIFY_SERVER || NTFY_SERVER;
-
-// Optional: scoring engine webhook (POST on new item)
-const SCORING_WEBHOOK_URL = process.env.SCORING_WEBHOOK_URL || '';
 
 // App name (shown in UI)
 const APP_NAME = process.env.APP_NAME || 'Veille Submit';
@@ -125,7 +133,8 @@ function getYouTubeTitle(videoId) {
 
 // ─── FETCH ARTICLE TITLE ───
 
-function fetchPageTitle(url) {
+function fetchPageTitle(url, depth = 0) {
+  if (depth > 5) return Promise.resolve(null);
   return new Promise((resolve) => {
     const mod = url.startsWith('https') ? https : http;
     const req = mod.get(url, {
@@ -133,7 +142,7 @@ function fetchPageTitle(url) {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VeilleBot/1.0)' }
     }, (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        return fetchPageTitle(res.headers.location).then(resolve);
+        return fetchPageTitle(res.headers.location, depth + 1).then(resolve);
       }
       let data = '';
       res.on('data', chunk => { data += chunk; if (data.length > 50000) res.destroy(); });
@@ -338,7 +347,7 @@ const server = http.createServer(async (req, res) => {
     const msg = hasUrl ? 'Sent to ' + APP_NAME : 'No URL detected';
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${APP_NAME}</title><style>
+<title>${esc(APP_NAME)}</title><style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f0f23;color:#fff}
 .card{text-align:center;padding:2rem;max-width:90vw;animation:pop .3s ease}
@@ -347,8 +356,8 @@ body{font-family:-apple-system,system-ui,sans-serif;min-height:100vh;display:fle
 .url{font-size:.75rem;color:#888;word-break:break-all;max-width:300px;margin:0 auto 1.5rem}
 .hint{font-size:.8rem;color:#666;margin-top:1rem}
 </style></head><body>
-<div class="card"><div class="icon">${icon}</div><div class="msg">${msg}</div>
-<div class="url">${sharedUrl.substring(0, 120)}</div>
+<div class="card"><div class="icon">${icon}</div><div class="msg">${esc(msg)}</div>
+<div class="url">${esc(sharedUrl.substring(0, 120))}</div>
 <div class="hint">Closing automatically...</div></div>
 <script>setTimeout(()=>{try{window.close()}catch(e){history.back()}},2000)</script>
 </body></html>`;
@@ -383,6 +392,18 @@ body{font-family:-apple-system,system-ui,sans-serif;min-height:100vh;display:fle
     res.writeHead(303, { 'Location': urlMatch ? '/?shared=1&status=ok' : '/?shared=1&status=no_url' });
     res.end();
     return;
+  }
+
+  // ─── AUTH CHECK (optional API_TOKEN) ───
+  if (API_TOKEN && (pathname === '/submit' || pathname === '/share') && req.headers['authorization'] !== 'Bearer ' + API_TOKEN) {
+    // Share target from browser won't have auth header — check cookie fallback
+    const cookies = req.headers.cookie || '';
+    const hasValidCookie = cookies.includes('auth_session='); // reverse proxy sets this
+    if (!hasValidCookie && pathname === '/submit') {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized — set API_TOKEN in .env or use Bearer auth' }));
+      return;
+    }
   }
 
   // ─── SUBMIT (API) ───

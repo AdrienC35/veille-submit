@@ -18,7 +18,7 @@ A self-hosted PWA to collect URLs from your phone and store them in PostgreSQL. 
 ### With Docker Compose (recommended)
 
 ```bash
-git clone https://github.com/YOUR_USER/veille-submit.git
+git clone https://github.com/AdrienC35/veille-submit.git
 cd veille-submit
 cp .env.example .env
 # Edit .env with your PostgreSQL credentials and ntfy topics
@@ -79,6 +79,17 @@ Phone Share Sheet
 | `NTFY_AUTH_PASS` | — | ntfy Basic auth password |
 | `NTFY_NOTIFY_TOPIC` | — | Topic for sending confirmations |
 | `NTFY_NOTIFY_SERVER` | same as `NTFY_SERVER` | Server for notifications |
+| `API_TOKEN` | — | Protect `/submit` endpoint (requires `Authorization: Bearer <token>`) |
+
+## Security
+
+**HTTPS is required** for the PWA Share Target to work. Put a reverse proxy in front:
+
+- [Caddy](https://caddyserver.com/) (automatic HTTPS, recommended)
+- nginx + Let's Encrypt
+- Cloudflare Tunnel
+
+If your instance is exposed to the internet, set `API_TOKEN` in `.env` to protect the `/submit` API from unauthorized use. The share UI and `/recent` endpoint remain open (they're read-only or same-origin).
 
 ## API
 
@@ -86,8 +97,10 @@ Phone Share Sheet
 ```bash
 curl -X POST http://localhost:7890/submit \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{"url": "https://example.com/article"}'
 ```
+> The `Authorization` header is only required if `API_TOKEN` is set.
 
 ### `GET /recent`
 Returns the 20 most recent submissions.

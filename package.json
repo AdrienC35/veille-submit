@@ -7,7 +7,7 @@
     "start": "node server.js"
   },
   "keywords": ["pwa", "share-target", "ntfy", "url-collector", "veille", "bookmarks"],
-  "author": "",
+  "author": "AdrienC35",
   "license": "MIT",
   "dependencies": {
     "pg": "^8.19.0"
