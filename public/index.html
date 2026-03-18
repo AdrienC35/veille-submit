@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#6366f1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon-192.png">
+<title>Agent Veille</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg: #0f172a; --card: #1e293b; --card2: #334155;
+  --accent: #6366f1; --accent2: #818cf8; --green: #22c55e; --red: #ef4444; --orange: #f59e0b;
+  --text: #f1f5f9; --text2: #94a3b8; --text3: #64748b;
+  --radius: 16px;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100dvh; overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+.header {
+  padding: 20px 20px 16px;
+  background: linear-gradient(135deg, var(--accent) 0%, #4f46e5 100%);
+  border-radius: 0 0 28px 28px;
+  position: relative; overflow: hidden;
+}
+.header::after {
+  content: ''; position: absolute; top: -40px; right: -40px;
+  width: 120px; height: 120px; border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+}
+.header h1 {
+  font-size: 22px; font-weight: 700; letter-spacing: -0.3px;
+  display: flex; align-items: center; gap: 10px;
+}
+.header h1 .icon { font-size: 26px; }
+.header p { font-size: 13px; opacity: 0.8; margin-top: 4px; }
+.submit-box {
+  margin: 20px 16px; padding: 20px;
+  background: var(--card); border-radius: var(--radius);
+  border: 1px solid rgba(99,102,241,0.2);
+}
+.submit-box label {
+  font-size: 13px; font-weight: 600; color: var(--text2);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  display: block; margin-bottom: 10px;
+}
+.input-row { display: flex; gap: 10px; }
+.input-row input {
+  flex: 1; padding: 14px 16px;
+  background: var(--bg); border: 1px solid var(--card2);
+  border-radius: 12px; color: var(--text);
+  font-size: 15px; outline: none; transition: border-color 0.2s;
+}
+.input-row input:focus { border-color: var(--accent); }
+.input-row input::placeholder { color: var(--text3); }
+.btn-send {
+  padding: 14px 20px;
+  background: var(--accent); border: none; border-radius: 12px;
+  color: white; font-size: 18px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center;
+  min-width: 54px;
+}
+.btn-send:active { transform: scale(0.95); background: #4f46e5; }
+.btn-send:disabled { opacity: 0.5; }
+.btn-send .spinner {
+  width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white; border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.toast {
+  margin: 0 16px; padding: 14px 16px;
+  border-radius: 12px; font-size: 14px;
+  display: none; align-items: center; gap: 10px;
+  animation: slideIn 0.3s ease;
+}
+@keyframes slideIn { from { opacity:0; transform:translateY(-8px); } }
+.toast.success { display: flex; background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+.toast.error { display: flex; background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+.toast.duplicate { display: flex; background: rgba(245,158,11,0.15); color: var(--orange); border: 1px solid rgba(245,158,11,0.3); }
+.toast .t-icon { font-size: 18px; flex-shrink: 0; }
+.toast .t-msg { flex: 1; line-height: 1.4; }
+.section-title {
+  padding: 20px 20px 10px;
+  font-size: 13px; font-weight: 600; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.section-title .refresh {
+  background: none; border: none; color: var(--text3); font-size: 16px; cursor: pointer; padding: 4px 8px;
+}
+.feed { padding: 0 16px 100px; display: flex; flex-direction: column; gap: 10px; }
+.feed-item {
+  padding: 14px 16px;
+  background: var(--card); border-radius: 14px;
+  display: flex; gap: 12px; align-items: flex-start;
+  transition: background 0.2s;
+  text-decoration: none; color: inherit;
+}
+.feed-item:active { background: var(--card2); }
+.feed-item .type-badge {
+  width: 38px; height: 38px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.type-badge.youtube { background: rgba(239,68,68,0.15); }
+.type-badge.instagram { background: rgba(236,72,153,0.15); }
+.type-badge.article { background: rgba(59,130,246,0.15); }
+.type-badge.tiktok { background: rgba(0,0,0,0.3); }
+.type-badge.twitter { background: rgba(99,102,241,0.15); }
+.type-badge.linkedin { background: rgba(59,130,246,0.15); }
+.type-badge.rss { background: rgba(245,158,11,0.15); }
+.type-badge.facebook { background: rgba(59,130,246,0.15); }
+.feed-item .info { flex: 1; min-width: 0; }
+.feed-item .title {
+  font-size: 14px; font-weight: 500; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.feed-item .meta {
+  font-size: 12px; color: var(--text3); margin-top: 4px;
+  display: flex; gap: 8px; align-items: center;
+}
+.feed-item .score {
+  padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;
+}
+.score.high { background: rgba(34,197,94,0.15); color: var(--green); }
+.score.mid { background: rgba(245,158,11,0.15); color: var(--orange); }
+.score.low { background: rgba(239,68,68,0.15); color: var(--red); }
+.score.unscored { background: rgba(148,163,184,0.15); color: var(--text3); }
+.empty { text-align: center; padding: 40px 20px; color: var(--text3); }
+.empty .e-icon { font-size: 48px; margin-bottom: 12px; }
+.paste-hint { text-align: center; font-size: 12px; color: var(--text3); margin-top: 10px; }
+.quick-actions { display: flex; gap: 8px; margin: 16px 16px 0; flex-wrap: wrap; }
+.quick-action {
+  padding: 8px 14px; border-radius: 20px;
+  background: var(--card); border: 1px solid var(--card2);
+  color: var(--text2); font-size: 12px; cursor: pointer;
+  transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+}
+.quick-action:active { background: var(--card2); border-color: var(--accent); color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1><span class="icon">&#x1F52D;</span> Agent Veille</h1>
+  <p>Partage un lien — je l'analyse pour toi</p>
+</div>
+
+<div class="submit-box">
+  <label>Envoyer un lien</label>
+  <div class="input-row">
+    <input type="url" id="urlInput" placeholder="Colle un lien ici..." autocomplete="off" enterkeyhint="send">
+    <button class="btn-send" id="sendBtn">
+      <span id="sendIcon">&#x2191;</span>
+    </button>
+  </div>
+  <div class="paste-hint">Ou utilise "Partager" depuis n'importe quelle app</div>
+</div>
+
+<div class="toast" id="toast">
+  <span class="t-icon" id="toastIcon"></span>
+  <span class="t-msg" id="toastMsg"></span>
+</div>
+
+<div class="quick-actions">
+  <button class="quick-action" id="qcYt">&#x25B6; Cycle YouTube</button>
+  <button class="quick-action" id="qcIg">&#x1F4F7; Cycle Insta</button>
+  <button class="quick-action" id="qcRss">&#x1F4F0; Cycle RSS</button>
+  <button class="quick-action" id="qcAll">&#x26A1; Cycle complet</button>
+</div>
+
+<div class="section-title">
+  <span>Soumissions recentes</span>
+  <button class="refresh" id="refreshBtn">&#x21BB;</button>
+</div>
+
+<div class="feed" id="feed"></div>
+
+<script>
+// Auth handled by SSO (auth-proxy) — no token needed in frontend
+
+const TYPE_ICONS = {
+  youtube: '\u25B6', instagram: '\uD83D\uDCF7', tiktok: '\u266A', twitter: 'X',
+  linkedin: 'in', article: '\uD83D\uDCC4', rss: '\uD83D\uDCF0', facebook: 'f'
+};
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}
+
+// Handle share target (URL from share sheet)
+document.addEventListener('DOMContentLoaded', function() {
+  var params = new URLSearchParams(window.location.search);
+  // Handle return from share target (POST redirect)
+  if (params.get('shared') === '1') {
+    if (params.get('status') === 'ok') {
+      setTimeout(function() { showToast('success', '\u2713', 'Lien envoye a l\'Agent Veille !'); }, 200);
+    } else {
+      setTimeout(function() { showToast('error', '\u2717', 'Aucun lien detecte dans le partage'); }, 200);
+    }
+    history.replaceState(null, '', '/');
+  }
+
+  // Handle share target via GET params (fallback)
+  var shared = params.get('url') || params.get('text') || params.get('title');
+  if (shared) {
+    var m = shared.match(/https?:\/\/[^\s]+/);
+    var url = m ? m[0] : shared;
+    document.getElementById('urlInput').value = url;
+    setTimeout(submitUrl, 300);
+    history.replaceState(null, '', '/');
+  }
+  loadRecent();
+});
+
+document.getElementById('sendBtn').addEventListener('click', submitUrl);
+document.getElementById('urlInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') submitUrl();
+});
+document.getElementById('refreshBtn').addEventListener('click', loadRecent);
+document.getElementById('qcYt').addEventListener('click', function() { triggerCycle('youtube'); });
+document.getElementById('qcIg').addEventListener('click', function() { triggerCycle('instagram'); });
+document.getElementById('qcRss').addEventListener('click', function() { triggerCycle('rss'); });
+document.getElementById('qcAll').addEventListener('click', function() { triggerCycle('all'); });
+
+function submitUrl() {
+  var input = document.getElementById('urlInput');
+  var btn = document.getElementById('sendBtn');
+  var url = input.value.trim();
+  if (!url) return;
+
+  btn.disabled = true;
+  document.getElementById('sendIcon').style.display = 'none';
+  var spinner = document.createElement('div');
+  spinner.className = 'spinner';
+  btn.appendChild(spinner);
+
+  fetch('/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: url })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.success) {
+      if (data.duplicate) {
+        showToast('duplicate', '\u26A0', data.message);
+      } else {
+        showToast('success', '\u2713', data.message);
+        input.value = '';
+      }
+      loadRecent();
+    } else {
+      showToast('error', '\u2717', data.error || 'Erreur inconnue');
+    }
+  })
+  .catch(function(e) {
+    showToast('error', '\u2717', 'Connexion impossible: ' + e.message);
+  })
+  .finally(function() {
+    btn.disabled = false;
+    if (spinner.parentNode) spinner.parentNode.removeChild(spinner);
+    document.getElementById('sendIcon').style.display = '';
+  });
+}
+
+function showToast(type, icon, msg) {
+  var toast = document.getElementById('toast');
+  toast.className = 'toast ' + type;
+  document.getElementById('toastIcon').textContent = icon;
+  document.getElementById('toastMsg').textContent = msg;
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(function() { toast.className = 'toast'; }, 5000);
+}
+
+function loadRecent() {
+  var feed = document.getElementById('feed');
+  fetch('/recent')
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    feed.textContent = '';
+    if (!data.items || data.items.length === 0) {
+      var empty = document.createElement('div');
+      empty.className = 'empty';
+      var eIcon = document.createElement('div');
+      eIcon.className = 'e-icon';
+      eIcon.textContent = '\uD83D\uDD2D';
+      empty.appendChild(eIcon);
+      var eText = document.createElement('div');
+      eText.textContent = 'Aucune soumission encore — Partage ton premier lien !';
+      empty.appendChild(eText);
+      feed.appendChild(empty);
+      return;
+    }
+    data.items.forEach(function(item) {
+      var type = item.source_type || 'article';
+      var icon = TYPE_ICONS[type] || '\uD83D\uDCC4';
+      var score = item.relevance_score;
+      var scoreClass = 'unscored', scoreLabel = '...';
+      if (score && score !== 5) {
+        if (score >= 7) { scoreClass = 'high'; scoreLabel = score + '/10'; }
+        else if (score >= 4) { scoreClass = 'mid'; scoreLabel = score + '/10'; }
+        else { scoreClass = 'low'; scoreLabel = score + '/10'; }
+      }
+      var ago = timeAgo(new Date(item.created_at));
+      var title = item.title || item.source_url;
+
+      var a = document.createElement('a');
+      a.className = 'feed-item';
+      a.href = item.source_url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+
+      var badge = document.createElement('div');
+      badge.className = 'type-badge ' + type;
+      badge.textContent = icon;
+      a.appendChild(badge);
+
+      var info = document.createElement('div');
+      info.className = 'info';
+
+      var titleEl = document.createElement('div');
+      titleEl.className = 'title';
+      titleEl.textContent = title;
+      info.appendChild(titleEl);
+
+      var meta = document.createElement('div');
+      meta.className = 'meta';
+
+      var agoSpan = document.createElement('span');
+      agoSpan.textContent = ago;
+      meta.appendChild(agoSpan);
+
+      var scoreSpan = document.createElement('span');
+      scoreSpan.className = 'score ' + scoreClass;
+      scoreSpan.textContent = scoreLabel;
+      meta.appendChild(scoreSpan);
+
+      var statusSpan = document.createElement('span');
+      statusSpan.textContent = item.review_status;
+      meta.appendChild(statusSpan);
+
+      info.appendChild(meta);
+      a.appendChild(info);
+      feed.appendChild(a);
+    });
+  })
+  .catch(function() {
+    feed.textContent = '';
+    var empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = 'Erreur de chargement';
+    feed.appendChild(empty);
+  });
+}
+
+function triggerCycle(type) {
+  showToast('success', '\u26A1', 'Cycle ' + type + ' lance...');
+  fetch('/trigger-cycle?type=' + type, { method: 'POST' })
+  .then(function() {
+    showToast('success', '\u2713', 'Cycle ' + type + ' demarre en arriere-plan');
+  })
+  .catch(function(e) {
+    showToast('error', '\u2717', 'Erreur: ' + e.message);
+  });
+}
+
+function timeAgo(date) {
+  var s = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (s < 60) return 'maintenant';
+  if (s < 3600) return Math.floor(s / 60) + 'min';
+  if (s < 86400) return Math.floor(s / 3600) + 'h';
+  return Math.floor(s / 86400) + 'j';
+}
+</script>
+</body>
+</html>

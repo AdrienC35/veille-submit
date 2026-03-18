@@ -1,0 +1,15 @@
+{
+  "name": "veille-submit",
+  "version": "1.0.0",
+  "description": "PWA to collect and track URLs from mobile — share target + ntfy + API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["pwa", "share-target", "ntfy", "url-collector", "veille", "bookmarks"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "pg": "^8.19.0"
+  }
+}

@@ -1,0 +1,28 @@
+services:
+  veille-submit:
+    build: .
+    container_name: veille-submit
+    restart: unless-stopped
+    ports:
+      - "7890:7890"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: veille-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: main
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: changeme
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    ports:
+      - "5432:5432"
+
+volumes:
+  pgdata:
