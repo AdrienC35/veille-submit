@@ -13,28 +13,51 @@ A self-hosted PWA to collect URLs from your phone and store them in PostgreSQL. 
 - **PWA** — installable on Android home screen, works offline (cached shell)
 - **Zero dependencies beyond Node + PostgreSQL** — no framework, no build step
 
+## Prerequisites
+
+### With Docker (recommended)
+
+- [Docker](https://docs.docker.com/get-docker/) 20+ with [Docker Compose](https://docs.docker.com/compose/install/) v2
+- That's it — PostgreSQL runs in a container, no install needed
+
+### Without Docker
+
+- [Node.js](https://nodejs.org/) 18+
+- [PostgreSQL](https://www.postgresql.org/) 14+
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) (optional — for YouTube transcript extraction)
+
+### For the PWA Share Target (mobile)
+
+- A domain with **HTTPS** (required by browsers for Share Target)
+- A reverse proxy: [Caddy](https://caddyserver.com/) (easiest), nginx + Let's Encrypt, or [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
+- Android phone with Chrome
+
 ## Quick Start
 
-### With Docker Compose (recommended)
+### With Docker Compose
 
 ```bash
 git clone https://github.com/AdrienC35/veille-submit.git
 cd veille-submit
 cp .env.example .env
-# Edit .env with your PostgreSQL credentials and ntfy topics
+# Edit .env — at minimum set PGPASSWORD
 docker compose up -d
 ```
 
-Open `http://localhost:7890` — done.
+Open `http://localhost:7890` — done. PostgreSQL is included, schema auto-created on first boot.
 
 ### Without Docker
 
 ```bash
-# Prerequisites: Node.js 18+, PostgreSQL, yt-dlp (optional, for YouTube)
+git clone https://github.com/AdrienC35/veille-submit.git
+cd veille-submit
 npm install
-psql -f schema.sql
+
+# Create the database schema
+psql -U your_user -d your_db -f schema.sql
+
 cp .env.example .env
-# Edit .env
+# Edit .env with your PostgreSQL credentials
 npm start
 ```
 
